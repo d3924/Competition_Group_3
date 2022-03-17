@@ -1,0 +1,10 @@
+---
+title: "Competition_Group3"
+date: "3/17/2022"
+output: html_document
+---
+Part 1: Cleaning the datasets
+```{r, warning = FALSE}
+library(tidyverse)
+library(readxl)
+```
