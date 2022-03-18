@@ -1,5 +1,5 @@
 ---
-title: "Competion"
+title: "Competion_Histogram and preProccing"
 author: "Omar Alnafie"
 date: "3/18/2022"
 output: html_document
@@ -28,7 +28,7 @@ outcome_vectore <-  competition_data [ , 22]
 ```
 
 ```{r, warning=FALSE, echo=FALSE}
-## (iv) Data Summary
+
 
 summary(outcome_vectore)
 ```
