@@ -30,7 +30,7 @@ outcome_vectore <-  competition_data [ , 22]
 ```
 
 ```{r, warning=FALSE, echo=FALSE}
-## (iv) Data Summary
+
 
 summary(outcome_vectore)
 ```
