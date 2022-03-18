@@ -1,0 +1,125 @@
+---
+title: "Untitled"
+author: "Omar Alnafie"
+date: "3/18/2022"
+output: html_document
+---
+
+```{r}
+getwd()
+```
+```{r,warning = FALSE, echo = FALSE}
+setwd("C:\\Users\\om444\\Downloads")
+competition_data <- read.csv("competition-data.csv", header = TRUE, sep = "," )
+library(caret)
+library(lattice)
+library(pls)
+library(tidyverse)
+library(elasticnet)
+library(corrplot)
+library(tidyverse)
+library(caret)
+library(modelr)
+library(ggplot2)
+library(dplyr)
+```
+
+
+```{r, warning=FALSE, echo=FALSE}
+outcome_vectore <-  competition_data [ , 22]
+```
+
+```{r, warning=FALSE, echo=FALSE}
+## (iv) Data Summary
+
+summary(outcome_vectore)
+```
+
+```{r, Warning = FALSE, echo=FALSE}
+
+## histogram/density plot
+library(ggplot2)
+ggplot( competition_data, aes(x= outcome,)) + geom_histogram()
+
+
+```
+
+
+```{r, warning=FALSE, echo=FALSE}
+predictors_only_competition_data <- dplyr::select(competition_data, -outcome)
+df_predictors_only <- data.frame(predictors_only_competition_data) 
+competition_data_preprocessing_fit <- preProcess(
+  df_predictors_only, 
+  method = c("BoxCox", "center", "scale"))
+competition_data_preprocessing_fit
+
+```
+
+
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+transformed_predictors <- predict(
+  competition_data_preprocessing_fit, df_predictors_only)
+
+
+preprocessed_competition_data <- add_column(transformed_predictors, 
+    outcome = competition_data$outcome)
+head(preprocessed_competition_data)
+
+```
+
+```{r, warning=FALSE, echo=FALSE}
+library(caTools)
+split <- sample.split(competition_data, SplitRatio = 0.8)
+comTrain <- subset(competition_data, split = "TRUE")
+comTest  <- subset(competition_data, split = "FALSE")
+```
+
+```{r, warning=FALSE, echo=FALSE}
+
+comTrain_prdfictors <-  comTrain %>% dplyr::select(-outcome)
+```
+
+```{r, warning=FALSE, echo=FALSE}
+set.seed(100)
+folds <- createFolds(competition_data$outcome, k = 50, returnTrain = TRUE)
+ctrl <- trainControl(method = "cv", index = folds)
+```
+
+```{r, warning=FALSE, echo=FALSE}
+ 
+# Regression Tree
+library(rpart)
+set.seed(100)
+  cartTune <- train(x = comTrain_prdfictors, y = comTrain$outcome,
+                    method = "rpart",
+                    tuneLength = 20,
+                    trControl = ctrl)
+cartTune
+```
+
+```{r, warning=FALSE, echo=FALSE}
+
+ggplot(cartTune)
+```
+
+```{r, warning = FALSE, echo = FALSE}
+cartTune$finalModel
+cartTune$finalModel
+```
+```{r}
+cartTuneSimple <- update(cartTune, param = list(cp = 0.05))
+cartTuneSimple$finalModel
+```
+
+
+
+
+```{r, fig.height=5.5, warning=FALSE, echo = FALSE}
+library("partykit")
+install.packages("grid", "libcoin", "mvtnorm")
+rpartTreeSimple <- as.party(cartTuneSimple$finalModel)
+plot(rpartTreeSimple)
+```
