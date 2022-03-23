@@ -204,3 +204,14 @@ set.seed(100)
 min(rfTune$results$RMSE)
 ggplot(rfTune)
 ```
+
+
+```{r}
+competition_test <- read.csv("competition-test-x-values.csv", header = TRUE, sep = "," )
+predictions<-predict(rfTune,newdata = competition_test)
+write.csv(predictions,"prediction.csv")
+```
+
+
+
+
