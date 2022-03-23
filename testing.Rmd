@@ -9,11 +9,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+## Library
 
 ```{r cars}
 competition_data <- read.csv("competition-data.csv", header = TRUE, sep = "," )
@@ -30,34 +26,51 @@ library(ggplot2)
 library(dplyr)
 library(caTools)
 library(RWeka)
+library(earth)
 ```
 
-## Preprocess
+## Exploration
+
+first we need to explore the distribution of the outcome.
 
 ```{r}
 competition_data %>%
   ggplot(mapping = aes(x=outcome))+geom_bar()
 ```
-##
+We can find that the outcome is not normal. we need to preprocess the data to make it "center" and "scale".
+
+## Preprocess
+
+we need to extract the outcome as vector and eliminate high correlation coefficients.  
+
 ```{r}
+##extract outcome
 outcome=c(competition_data$outcome)
 train=competition_data %>% select(-outcome)
+## reduce noise
 tooHigh <- findCorrelation(cor(train), cutoff = .9)
 low_noise_train <- train[, -tooHigh]
 ```
 
-## 10 k
+## cross validation initialize
+
 ```{r}
+## to improve accuracy, we will use k=10.
 folds <- createFolds(outcome, k = 10, returnTrain = TRUE)
 ctrl <- trainControl(method = "cv", index = folds)
 ```
+
+
+We will try to use several different method to predict the outcome. Since we have no need to consider the complexity and running time of our models, We will check the "RMSE" value to determine which model to choose.
 
 ## 1 linear
 ```{r}
  set.seed(100)
   lmTuneFiltered <- train(x = low_noise_train, y = outcome,
                   method = "lm",
-                  trControl = ctrl)
+                  trControl = ctrl,
+                  preProc = c("center", "scale")
+                  )
 
 ```
 
@@ -98,6 +111,8 @@ ggplot(ridgeTune)
 min(lassoTune$results$RMSE)
 ggplot(lassoTune)
 ```
+We can find that the linear methods do not fit this dataset very well. The RMSE are all around 10.
+
 ### 4 KNN
 
 ```{r}
@@ -170,13 +185,16 @@ ggplot(marsFit)
 ```{r}
 svmLinearTuned$results$RMSE
 ```
+The result is very surprising that they varies greatly. "Mars" seems to have the greatest result. Next we will try to use  "Trees"
+
 ### Regression tree
+
 ```{r}
 set.seed(100)
 m5Tune <- train(low_noise_train, outcome,
                  method = "M5",
                  trControl = ctrl,
-                 control = Weka_control(M = 70)
+                 control = Weka_control(M = 70),
 )
 ```
 
@@ -197,6 +215,7 @@ set.seed(100)
                    tuneGrid = mtryGrid,
                    ntree = 50,
                    importance = TRUE,
+                   preProc = c("center", "scale"),
                    trControl = ctrl)
 ```
 
@@ -205,6 +224,10 @@ min(rfTune$results$RMSE)
 ggplot(rfTune)
 ```
 
+Tree seems to run great on this model. We can find that random forest have the smallerst RMSE, and thats what we will choose.
+
+
+## Prediction
 
 ```{r}
 competition_test <- read.csv("competition-test-x-values.csv", header = TRUE, sep = "," )
@@ -212,6 +235,8 @@ predictions<-predict(rfTune,newdata = competition_test)
 write.csv(predictions,"prediction.csv")
 ```
 
+## Conclusion
 
+We are actually not very satisfied with the final results. To improve it, we should have some further exploration on the relationship between each variables. In addition, the parameters should be adjusted to fit a better model.
 
 
