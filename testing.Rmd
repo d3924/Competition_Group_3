@@ -1,0 +1,206 @@
+---
+title: "competition"
+author: "Jinghao Xu"
+date: '2022-03-22'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+competition_data <- read.csv("competition-data.csv", header = TRUE, sep = "," )
+library(caret)
+library(lattice)
+library(pls)
+library(tidyverse)
+library(elasticnet)
+library(corrplot)
+library(tidyverse)
+library(caret)
+library(modelr)
+library(ggplot2)
+library(dplyr)
+library(caTools)
+library(RWeka)
+```
+
+## Preprocess
+
+```{r}
+competition_data %>%
+  ggplot(mapping = aes(x=outcome))+geom_bar()
+```
+##
+```{r}
+outcome=c(competition_data$outcome)
+train=competition_data %>% select(-outcome)
+tooHigh <- findCorrelation(cor(train), cutoff = .9)
+low_noise_train <- train[, -tooHigh]
+```
+
+## 10 k
+```{r}
+folds <- createFolds(outcome, k = 10, returnTrain = TRUE)
+ctrl <- trainControl(method = "cv", index = folds)
+```
+
+## 1 linear
+```{r}
+ set.seed(100)
+  lmTuneFiltered <- train(x = low_noise_train, y = outcome,
+                  method = "lm",
+                  trControl = ctrl)
+
+```
+
+```{r}
+lmTuneFiltered$results$RMSE
+```
+
+## 2 Ridge
+```{r}
+  set.seed(100)
+  ridgeGrid <- expand.grid(lambda = seq(0, .1, length = 10))
+  ridgeTune <- train(x = low_noise_train, y = outcome,
+                     method = "ridge",
+                     tuneGrid = ridgeGrid,
+                     trControl = ctrl,
+                     preProc = c("center", "scale")
+                )
+```
+
+```{r}
+min(ridgeTune$results$RMSE)
+ggplot(ridgeTune)
+```
+## 3 Lasso
+```{r}
+ set.seed(100)
+  lassoGrid <- expand.grid(lambda = c(0), 
+                        fraction = seq(.1, 1, length = 15))
+  lassoTune <- train(x = low_noise_train, y = outcome,
+                      method = "enet",
+                      tuneGrid = lassoGrid,
+                      trControl = ctrl,
+                      preProc = c("center", "scale")
+                    )
+```
+
+```{r}
+min(lassoTune$results$RMSE)
+ggplot(lassoTune)
+```
+### 4 KNN
+
+```{r}
+svmRTuned <- train(
+    low_noise_train, outcome, 
+    method = "svmRadial",
+    preProc = c("center", "scale"),
+    tuneLength = 8,
+    epsilon = 0.01,
+    trControl = ctrl
+  )
+```
+
+```{r}
+min(svmRTuned$results$RMSE)
+ggplot(svmRTuned)
+```
+### 5 One layer neural network 
+```{r}
+set.seed(100)
+   nnetGrid <- expand.grid(
+    decay = seq(0,100,length=10), 
+    size = c(3) 
+  )  
+  nnetTune <- train(low_noise_train, outcome,
+                     method = "nnet",
+                     tuneGrid = nnetGrid,
+                     trControl = ctrl,
+                     preProc = c("center", "scale"),
+                     linout = TRUE, 
+                     trace = FALSE
+  )
+  
+```
+
+```{r}
+min(nnetTune$results$RMSE)
+ggplot(nnetTune)
+```
+
+### 6 Mars
+```{r}
+marsGrid <- expand.grid(.degree = 1:2, .nprune = c(20, 30, 40, 50))
+    marsFit <- train(low_noise_train, outcome,
+                       method = "earth",
+                       tuneGrid = marsGrid,
+                       trControl = ctrl
+    )
+```
+
+```{r}
+min(marsFit$results$RMSE)
+ggplot(marsFit)
+
+```
+
+
+### 7 linear SVM
+```{r}
+ svmLinearTuned <- train(
+    low_noise_train, outcome, 
+    method = "svmLinear",
+    preProc = c("center", "scale"),
+    tuneLength = 8,
+    epsilon = 0.01,
+    trControl = ctrl
+  )
+```
+
+```{r}
+svmLinearTuned$results$RMSE
+```
+### Regression tree
+```{r}
+set.seed(100)
+m5Tune <- train(low_noise_train, outcome,
+                 method = "M5",
+                 trControl = ctrl,
+                 control = Weka_control(M = 70)
+)
+```
+
+```{r}
+min(m5Tune$results$RMSE)
+```
+
+### Random forests
+
+```{r}
+mtryGrid <- data.frame(
+  mtry = floor(seq(10, ncol(low_noise_train), 
+                      length = 10))
+  )
+set.seed(100)
+  rfTune <- train(x = low_noise_train, y = outcome,
+                   method = "rf",
+                   tuneGrid = mtryGrid,
+                   ntree = 50,
+                   importance = TRUE,
+                   trControl = ctrl)
+```
+
+```{r}
+min(rfTune$results$RMSE)
+ggplot(rfTune)
+```
