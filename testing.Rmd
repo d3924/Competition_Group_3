@@ -232,7 +232,7 @@ Tree seems to run great on this model. We can find that random forest have the s
 ```{r}
 competition_test <- read.csv("competition-test-x-values.csv", header = TRUE, sep = "," )
 predictions<-predict(rfTune,newdata = competition_test)
-write.csv(predictions,"prediction.csv")
+write.csv(predictions,"prediction.csv",row.names = FALSE)
 ```
 
 ## Conclusion
